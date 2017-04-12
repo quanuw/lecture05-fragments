@@ -1,78 +1,83 @@
 package edu.uw.fragmentdemo;
 
-import android.os.AsyncTask;
 import android.os.Bundle;
+import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentManager;
+import android.support.v4.app.FragmentStatePagerAdapter;
+import android.support.v4.view.PagerAdapter;
+import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
-import android.view.View;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
-import android.widget.EditText;
-import android.widget.ListView;
 
-import java.util.ArrayList;
+import static android.support.v4.view.PagerAdapter.POSITION_NONE;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements MoviesFragment.OnMovieClickListener,
+        SearchFragment.OnSearchListener {
 
     private static final String TAG = "MainActivity";
 
-    private ArrayAdapter<Movie> adapter;
+    private ViewPager vp;
 
+    private SearchFragment sf;
+    private MoviesFragment mf;
+    private DetailFragment df;
 
+    private PagerAdapter pa;
+
+    public class MoviePagerAdapter extends FragmentStatePagerAdapter {
+
+        public MoviePagerAdapter(FragmentManager fm) {
+            super(fm);
+        }
+
+//        TODO: need to fix
+        @Override
+        public Fragment getItem(int position) {
+            if (position == 0) return sf;
+            if (position == 1) return mf;
+            if (position == 2) return df;
+            return null;
+        }
+
+        @Override
+        public int getCount() {
+//          aftter search and movie clicked
+            if (mf != null && df != null) return 3;
+//          after search
+            if (mf != null) return 2;
+//          before search
+            return 1;
+        }
+    }
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-        adapter = new ArrayAdapter<Movie>(this,
-                R.layout.list_item, R.id.txtItem, new ArrayList<Movie>());
-
-        ListView listView = (ListView)findViewById(R.id.listView);
-        listView.setAdapter(adapter);
-
-        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                Movie movie = (Movie)parent.getItemAtPosition(position);
-                Log.v(TAG, "You clicked on: "+movie);
-            }
-        });
+        sf = SearchFragment.newInstance();
+        pa = new MoviePagerAdapter(getSupportFragmentManager());
+        vp = (ViewPager) findViewById(R.id.pager);
+        vp.setAdapter(pa);
     }
 
 
-    //respond to search button clicking
-    public void handleSearchClick(View v){
-        EditText text = (EditText)findViewById(R.id.txtSearch);
-        String searchTerm = text.getText().toString();
 
-        downloadMovieData(searchTerm);
+
+    @Override
+    public void onMovieClick(Movie movie){
+
+        df = DetailFragment.newInstance(movie);
+        pa.notifyDataSetChanged();
+        vp.setCurrentItem(2);
     }
 
-    //helper method for downloading the data via the MovieDownloadTask
-    public void downloadMovieData(String searchTerm){
-        Log.v(TAG, "You searched for: "+searchTerm);
-        MovieDownloadTask task = new MovieDownloadTask();
-        task.execute(searchTerm);
+    @Override
+    public void onSearchSubmitted(String searchTerm) {
+        mf = MoviesFragment.newInstance(searchTerm);
+        pa.notifyDataSetChanged();
+        vp.setCurrentItem(1);
     }
 
-    //A task to download movie data from the internet on a background thread
-    public class MovieDownloadTask extends AsyncTask<String, Void, ArrayList<Movie>> {
 
-        @Override
-        protected ArrayList<Movie> doInBackground(String... params) {
-            ArrayList<Movie> data = MovieDownloader.downloadMovieData(params[0]);
-            return data;
-        }
-
-        @Override
-        protected void onPostExecute(ArrayList<Movie> movies) {
-            super.onPostExecute(movies);
-
-            adapter.clear();
-            for(Movie movie : movies){
-                adapter.add(movie);
-            }
-        }
+    public int getItemPosition(Object object) {
+        return POSITION_NONE;
     }
-
 }
